@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "angelv.clock",
   "name": "Clock, Zones & Calendar",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "author": "Angel Ventura",
   "description": "Date/time label with a calendar popup, a time-zone converter, and read-only calendar sync from any iCal feed",
   "kinds": [

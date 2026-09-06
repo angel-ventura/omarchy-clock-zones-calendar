@@ -1393,7 +1393,41 @@ def read_stdin_payload(max_bytes=MAX_CONFIG_BYTES):
         return ""
 
 
+KNOWN_FLAGS = ("--purge-data", "--cleanup", "--uninstall", "--read",
+               "--save-config", "--get-config")
+
+
+def usage():
+    return """fetch-events.py - the calendar helper for the angelv.clock widget.
+
+With no arguments: fetch every enabled feed in the config below, expand
+recurrence rules, and write the result to the state file.
+
+  --get-config   print the feed list
+  --save-config  replace the feed list with a JSON array read from stdin
+  --read         print the config and state files, under a size cap
+  --purge-data   delete the two files below
+  --help         this text
+
+  config  {config}  (0600)
+  state   {state}
+""".format(config=CONFIG_PATH, state=OUTPUT_PATH)
+
+
 def main():
+    if len(sys.argv) > 1:
+        first = sys.argv[1]
+        if first in ("--help", "-h"):
+            sys.stdout.write(usage())
+            sys.exit(0)
+        if first not in KNOWN_FLAGS:
+            # Ahead of everything else, and it exits: falling through to the
+            # default would mean a mistyped flag silently hit the network and
+            # rewrote the state file.
+            sys.stderr.write("fetch-events.py: unrecognised argument: {}\n\n".format(first))
+            sys.stderr.write(usage())
+            sys.exit(2)
+
     if len(sys.argv) > 1 and sys.argv[1] in ("--purge-data", "--cleanup", "--uninstall"):
         res = purge_plugin_data()
         print(json.dumps(res, indent=2))
@@ -1412,7 +1446,10 @@ def main():
         arg = sys.argv[1]
         if arg == "--save-config":
             try:
-                raw_input = sys.argv[2] if len(sys.argv) > 2 else read_stdin_payload(MAX_CONFIG_BYTES)
+                # stdin only. A feed URL is a bearer credential and argv is
+                # readable by anything that can list /proc, so there is
+                # deliberately no argument form of this to reach for.
+                raw_input = read_stdin_payload(MAX_CONFIG_BYTES)
                 if len(raw_input) > MAX_CONFIG_BYTES:
                     raise ValueError(f"Config payload exceeds maximum size of {MAX_CONFIG_BYTES} bytes")
                 new_config = json.loads(raw_input)
