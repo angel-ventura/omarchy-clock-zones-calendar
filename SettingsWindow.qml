@@ -39,7 +39,7 @@ Item {
   property var shell: null
   property var manifest: null
 
-  property bool closingFromHost: false
+  property bool closing: false
 
   readonly property string widgetId: "angelv.clock"
 
@@ -108,7 +108,7 @@ Item {
 
   function open(payloadJson) {
     root.ready = false
-    root.closingFromHost = false
+    root.closing = false
     root.sizeWindow()
     root.loadEntry()
     root.loadCalendars()
@@ -118,13 +118,24 @@ Item {
   }
 
   function close() {
+    // hide() calls straight back into close(), so the re-entry has to stop
+    // here rather than call hide() again: that cycle is unbounded and only
+    // ended by exhausting the JS stack. The host catches the RangeError, so
+    // the window still closed -- it just did it thousands of frames deep,
+    // once per close.
+    if (root.closing) return
+    root.closing = true
     root.ready = false
     settleTimer.stop()
     window.visible = false
-    // No window manager closes this one, so the host has to be told that the
-    // panel is down or it will believe it is still open.
-    if (!root.closingFromHost && root.shell && typeof root.shell.hide === "function")
-      root.shell.hide(root.widgetId)
+    try {
+      // No window manager closes this one, so the host has to be told that the
+      // panel is down or it will believe it is still open.
+      if (root.shell && typeof root.shell.hide === "function")
+        root.shell.hide(root.widgetId)
+    } finally {
+      root.closing = false
+    }
   }
 
   Timer {
